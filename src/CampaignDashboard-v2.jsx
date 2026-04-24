@@ -1,15 +1,12 @@
-// src/CampaignDashboard.jsx — v2
-// Supports ?campaign_id=<uuid> URL param → loads from Supabase
-// Falls back to hardcoded Ayook data when no param present
-
 import React, { useState, useCallback, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
-
+ 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = SUPABASE_URL && SUPABASE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_KEY)
+  : null;
+ 
 const B = {
   navy:"#0A1628",blue:"#1E3A5F",midBlue:"#2B5C8A",lightBlue:"#4A90D9",
   skyBlue:"#E8F4FD",ice:"#F0F6FC",white:"#FFFFFF",
@@ -18,7 +15,7 @@ const B = {
   green:"#1B7A3D",greenBg:"#E6F4EA",amber:"#B86E00",amberBg:"#FFF3E0",red:"#C0392B",
 };
 const TT_C="#E84060", IG_C="#9B59B6", YT_C="#E84040";
-
+ 
 // ── HARDCODED FALLBACK (Ayook) ──────────────────────────────
 const AYOOK_VIDEOS = [
   {num:1,title:"Mystery announcement — going to Ayook for the first time",date:"Mar 19",status:"live",tt:{views:3759,likes:null,comments:null,shares:53,followers:6,note:true},ig:{reach:null,likes:22,comments:null,saves:7},yt:{views:133,blocked:false}},
@@ -42,7 +39,7 @@ const AYOOK_VIDEOS = [
   {num:19,title:"In production — Samada",date:null,status:"production",tt:null,ig:null,yt:null},
   {num:20,title:"In production — Samada",date:null,status:"production",tt:null,ig:null,yt:null},
 ];
-
+ 
 const AYOOK_META = {
   brand_name: "Ayook Electric Scooters",
   creator_name: "Martin Dionne",
@@ -51,7 +48,7 @@ const AYOOK_META = {
   ig_handle: "@martinennoid",
   yt_handle: "@PreemoClub",
 };
-
+ 
 // ── Convert Supabase rows to VIDEOS array format ──────────────
 function rowsToVideos(rows) {
   return rows.map(r => ({
@@ -67,7 +64,7 @@ function rowsToVideos(rows) {
       : null,
   }));
 }
-
+ 
 const STATUS_CFG = {
   live:         {label:null,           bg:B.greenBg, color:B.green},
   not_yet:      {label:"Not Yet",      bg:B.ice,     color:B.textLight},
@@ -75,7 +72,7 @@ const STATUS_CFG = {
   no_data:      {label:"No Data",      bg:B.ice,     color:B.textLight},
   production:   {label:"In Production",bg:B.amberBg, color:B.amber},
 };
-
+ 
 function fmt(v) {
   if (v===null||v===undefined) return null;
   if (v>=10000) return (v/1000).toFixed(0)+"K";
@@ -92,7 +89,7 @@ function calcTotals(videos) {
     IGc:s(v=>v.ig?.comments), IGs:s(v=>v.ig?.saves), TTf:s(v=>v.tt?.followers),
   };
 }
-
+ 
 function EditCell({value, onSave, accent, bold}) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -112,7 +109,7 @@ function EditCell({value, onSave, accent, bold}) {
     </span>
   );
 }
-
+ 
 function Badge({label, bg, color}) {
   return <span style={{fontSize:9,fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",padding:"2px 7px",borderRadius:6,background:bg,color,whiteSpace:"nowrap"}}>{label}</span>;
 }
@@ -131,7 +128,7 @@ function KpiCard({label, value, sub, accent, dot}) {
 function TH({children, color, align="right", width}) {
   return <th style={{padding:"10px 10px 8px",textAlign:align,fontSize:9,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color,whiteSpace:"nowrap",minWidth:width,borderBottom:`2px solid ${B.border}`,background:B.ice}}>{children}</th>;
 }
-
+ 
 export default function CampaignDashboard() {
   const [videos, setVideos]     = useState(AYOOK_VIDEOS);
   const [meta, setMeta]         = useState(AYOOK_META);
@@ -139,13 +136,13 @@ export default function CampaignDashboard() {
   const [hover, setHover]       = useState(null);
   const [filter, setFilter]     = useState("all");
   const [editMode, setEditMode] = useState(false);
-
+ 
   // ── Load from Supabase if ?campaign_id param present ──
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const campaignId = params.get("campaign_id");
-    if (!campaignId) return; // use hardcoded fallback
-
+    if (!campaignId || !supabase) return; // use hardcoded fallback
+ 
     setLoading(true);
     Promise.all([
       supabase.from("campaigns").select("*").eq("id", campaignId).single(),
@@ -162,7 +159,7 @@ export default function CampaignDashboard() {
       });
     });
   }, []);
-
+ 
   const update = useCallback((num, path, value) => {
     setVideos(prev => prev.map(v => {
       if (v.num !== num) return v;
@@ -174,13 +171,13 @@ export default function CampaignDashboard() {
       return copy;
     }));
   }, []);
-
+ 
   const T = calcTotals(videos);
   const maxTT = Math.max(...videos.map(v=>v.tt?.views||0));
   const liveCount = videos.filter(v=>v.status==="live").length;
   const prodCount = videos.filter(v=>v.status==="production").length;
   const filtered = filter==="all" ? videos : videos.filter(v=>v.status===filter);
-
+ 
   if (loading) return (
     <div style={{fontFamily:"'Montserrat',sans-serif",background:B.ice,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap');*{box-sizing:border-box;margin:0;padding:0;}`}</style>
@@ -189,11 +186,11 @@ export default function CampaignDashboard() {
       </div>
     </div>
   );
-
+ 
   return (
     <div style={{fontFamily:"'Montserrat',sans-serif",background:B.ice,minHeight:"100vh",color:B.text}}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap');*{box-sizing:border-box;margin:0;padding:0;}body{background:#F0F6FC;}tr.vrow:hover td{background:rgba(74,144,217,0.025)!important;}.pill{cursor:pointer;transition:all .15s;}.pill:hover{border-color:#4A90D9!important;}input[type=number]::-webkit-inner-spin-button{opacity:0;}`}</style>
-
+ 
       {/* HEADER */}
       <header style={{background:B.white,borderBottom:`1px solid ${B.border}`,padding:"13px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -213,16 +210,16 @@ export default function CampaignDashboard() {
           </button>
         </div>
       </header>
-
+ 
       <div style={{maxWidth:1200,margin:"0 auto",padding:"32px 24px 80px"}}>
         {editMode&&<div style={{background:"rgba(74,144,217,0.08)",border:`1px solid ${B.lightBlue}`,borderRadius:10,padding:"10px 16px",marginBottom:20,fontSize:12,color:B.midBlue,fontWeight:600}}>✎ Edit mode on — click any underlined number to update it. Press Enter or click away to save.</div>}
-
+ 
         <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:B.lightBlue,marginBottom:6}}>Campaign Overview</div>
         <h1 style={{fontSize:28,fontWeight:800,color:B.navy,letterSpacing:"-0.5px",lineHeight:1.05,marginBottom:4}}>{meta.brand_name}</h1>
         <p style={{fontSize:13,color:B.textMuted,marginBottom:24}}>
           {[meta.tt_handle&&`TikTok ${meta.tt_handle}`, meta.ig_handle&&`Instagram ${meta.ig_handle}`, meta.yt_handle&&`YouTube ${meta.yt_handle}`].filter(Boolean).join(" · ") || `Creator: ${meta.creator_name}`}
         </p>
-
+ 
         {/* KPIs */}
         <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:14}}>
           <KpiCard label="TikTok Views"     value={T.TTv} sub="All published videos" accent={TT_C} dot={TT_C}/>
@@ -242,7 +239,7 @@ export default function CampaignDashboard() {
             </div>
           ))}
         </div>
-
+ 
         {/* Progress */}
         <div style={{background:B.white,border:`1px solid ${B.border}`,borderRadius:10,padding:"14px 18px",marginBottom:24,boxShadow:B.shadow}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -253,7 +250,7 @@ export default function CampaignDashboard() {
             <div style={{height:"100%",width:`${Math.round(liveCount/videos.length*100)}%`,background:`linear-gradient(90deg,${B.lightBlue},#6BB5FF)`,borderRadius:3}}/>
           </div>
         </div>
-
+ 
         {/* Video list */}
         <div style={{background:B.white,border:`1px solid ${B.border}`,borderRadius:12,padding:"18px 20px",marginBottom:20,boxShadow:B.shadow}}>
           <div style={{fontSize:10,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color:B.textLight,marginBottom:14}}>Full Video List — All {videos.length} Deliverables</div>
@@ -271,7 +268,7 @@ export default function CampaignDashboard() {
             );
           })}
         </div>
-
+ 
         {/* Filters */}
         <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
           {[["all","All",`(${videos.length})`],["live","Live",`(${liveCount})`],["production","In Production",`(${prodCount})`],["not_yet","Not Yet",""],["no_data","No Data",""],["no_analytics","No Analytics",""]].map(([val,label,cnt])=>(
@@ -280,7 +277,7 @@ export default function CampaignDashboard() {
             </button>
           ))}
         </div>
-
+ 
         {/* TABLE */}
         <div style={{background:B.white,border:`1px solid ${B.border}`,borderRadius:14,boxShadow:B.shadow,overflow:"hidden"}}>
           <div style={{background:B.ice,borderBottom:`1px solid ${B.border}`,padding:"8px 18px",display:"flex",gap:20,alignItems:"center",flexWrap:"wrap"}}>
