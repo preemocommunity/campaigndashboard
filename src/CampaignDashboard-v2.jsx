@@ -150,7 +150,8 @@ export default function CampaignDashboard() {
     ]).then(([{ data: campaign, error: ce }, { data: rows, error: ve }]) => {
       setLoading(false);
       if (ce || !campaign) { console.error("Campaign not found", ce); return; }
-      if (!ve && rows) setVideos(rowsToVideos(rows));
+      if (!ve && rows && rows.length > 0) setVideos(rowsToVideos(rows));
+      // if rows is empty, keep the hardcoded AYOOK_VIDEOS fallback
       setMeta({
         brand_name: campaign.title || campaign.brand_name,
         creator_name: campaign.creator_name || "",
